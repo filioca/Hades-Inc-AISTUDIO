@@ -56,7 +56,7 @@ export class GameEngine {
   private selectedTowerId: string | null = null;
   private assets = new AssetManager();
   private assetsLoaded = false;
-  private isStopped = false;
+  private isDestroyed = false; // Trava de segurança contra o Loop Zumbi
 
   constructor(canvas: HTMLCanvasElement, onStateChange: (state: GameState) => void) {
     this.canvas = canvas;
@@ -87,7 +87,6 @@ export class GameEngine {
   }
 
   public start(onProgress?: (loaded: number, total: number) => void) {
-    console.log('Engine start called');
     this.state.status = 'playing';
     this.state.obolos = 200;
     this.state.lives = 20;
@@ -103,8 +102,9 @@ export class GameEngine {
     this.onStateChange({ ...this.state });
     
     if (!this.assetsLoaded) {
-      console.log('Loading assets...');
       this.assets.load({
+        'bg_fundo': '[COLE_O_LINK_DO_FUNDO_AQUI]',
+        'bg_caminho': '[COLE_O_LINK_DO_CAMINHO_AQUI]',
         'tower_caronte': 'https://i.imgur.com/EqAP9zX.png',
         'tower_medusa': 'https://i.imgur.com/HvWCKBR.png',
         'tower_cerbero': 'https://i.imgur.com/IzVaDZT.png',
@@ -112,27 +112,24 @@ export class GameEngine {
         'enemy_comum': 'https://i.imgur.com/74nu9Qp.png',
         'enemy_rapida': 'https://i.imgur.com/LUUasZ6.png',
         'enemy_tanque': 'https://i.imgur.com/XNyQRbM.png',
-        'enemy_especial': 'https://i.imgur.com/XNyQRbM.png', // Using boss for especial as well
+        'enemy_especial': 'https://i.imgur.com/XNyQRbM.png',
       }, (loaded, total) => {
         if (onProgress) onProgress(loaded, total);
       }, () => {
-        console.log('Assets loaded. isStopped:', this.isStopped);
-        if (this.isStopped) return;
+        if (this.isDestroyed) return; // Se a engine foi morta enquanto carregava, aborte
         this.assetsLoaded = true;
         this.lastTime = performance.now();
-        this.loop();
+        this.loop(this.lastTime);
       });
     } else {
-      console.log('Assets already loaded. Starting loop.');
       if (onProgress) onProgress(1, 1);
       this.lastTime = performance.now();
-      this.loop();
+      this.loop(this.lastTime);
     }
   }
 
   public stop() {
-    console.log('Engine stop called');
-    this.isStopped = true;
+    this.isDestroyed = true; // Mata a engine permanentemente
     if (this.animationFrameId !== null) {
       cancelAnimationFrame(this.animationFrameId);
       this.animationFrameId = null;
@@ -140,11 +137,11 @@ export class GameEngine {
   }
 
   public resumeLoop() {
-    if (this.isStopped) return;
+    if (this.isDestroyed) return;
     if (this.animationFrameId === null && (this.state.status === 'playing' || this.state.status === 'paused') && this.assetsLoaded) {
       this.lastTime = performance.now();
-      this.draw(); // Force a draw immediately
-      this.loop();
+      this.draw();
+      this.loop(this.lastTime);
     }
   }
 
@@ -192,26 +189,19 @@ export class GameEngine {
   }
 
   public buildTower(type: TowerType, gridX: number, gridY: number) {
-    console.log('buildTower called', type, gridX, gridY);
     const stats = TOWER_STATS[type];
     const cost = stats.cost[0];
     
-    if (this.state.obolos < cost) {
-      console.log('Not enough obolos');
-      return false;
-    }
+    if (this.state.obolos < cost) return false;
     
-    // Check if cell is occupied by path or another tower
     const px = gridX * CELL_SIZE + CELL_SIZE / 2;
     const py = gridY * CELL_SIZE + CELL_SIZE / 2;
     
-    // Simple path collision check (very basic)
     let onPath = false;
     for (let i = 0; i < PATH_PIXELS.length - 1; i++) {
       const p1 = PATH_PIXELS[i];
       const p2 = PATH_PIXELS[i+1];
       
-      // Check distance to line segment
       const l2 = Math.pow(p1.x - p2.x, 2) + Math.pow(p1.y - p2.y, 2);
       let t = ((px - p1.x) * (p2.x - p1.x) + (py - p1.y) * (p2.y - p1.y)) / l2;
       t = Math.max(0, Math.min(1, t));
@@ -225,12 +215,8 @@ export class GameEngine {
       }
     }
     
-    if (onPath) {
-      console.log('Cannot build on path');
-      return false;
-    }
+    if (onPath) return false;
     
-    // Check if cell is occupied by scenery
     const onScenery = SCENERY.some(item => {
       if (item.type === 'pool') {
         const poolX = item.x * CELL_SIZE + CELL_SIZE / 2;
@@ -240,19 +226,13 @@ export class GameEngine {
       }
       return item.x === gridX && item.y === gridY;
     });
-    if (onScenery) {
-      console.log('Cannot build on scenery');
-      return false;
-    }
+    if (onScenery) return false;
     
     const occupied = this.state.towers.some(t => 
       Math.abs(t.x - px) < CELL_SIZE / 2 && Math.abs(t.y - py) < CELL_SIZE / 2
     );
     
-    if (occupied) {
-      console.log('Cell is occupied by another tower');
-      return false;
-    }
+    if (occupied) return false;
     
     this.state.obolos -= cost;
     this.state.towers.push({
@@ -268,7 +248,6 @@ export class GameEngine {
       targetId: null,
     });
     
-    console.log('Tower built successfully. Total towers:', this.state.towers.length);
     this.onStateChange({ ...this.state });
     return true;
   }
@@ -278,7 +257,7 @@ export class GameEngine {
     if (!tower || tower.level >= 2) return false;
     
     const stats = TOWER_STATS[tower.type];
-    const cost = stats.cost[tower.level + 1] + (this.state.zeusPenalties * 10); // Zeus penalty increases cost
+    const cost = stats.cost[tower.level + 1] + (this.state.zeusPenalties * 10);
     
     if (this.state.obolos < cost) return false;
     
@@ -297,26 +276,18 @@ export class GameEngine {
     this.onStateChange({ ...this.state });
   }
 
-  private loop = () => {
-    const time = performance.now();
-    if (this.isStopped) {
-      console.log('Loop stopped because isStopped is true');
-      return;
-    }
-    if (this.state.status !== 'playing' && this.state.status !== 'paused') {
-      console.log('Loop stopped because status is', this.state.status);
-      return;
-    }
+  private loop = (time: number) => {
+    if (this.isDestroyed) return; // Bloqueia loops órfãos
+    if (this.state.status !== 'playing' && this.state.status !== 'paused') return;
     
     this.animationFrameId = requestAnimationFrame(this.loop);
     
     if (this.state.status === 'paused') {
-      this.lastTime = time; // Keep lastTime updated so delta doesn't spike on resume
+      this.lastTime = time;
       this.draw();
       return;
     }
     
-    // Fixed time step for logic (60fps)
     const deltaTime = time - this.lastTime;
     if (deltaTime < 1000 / 60) return;
     
@@ -330,7 +301,6 @@ export class GameEngine {
   private update() {
     if (this.state.status !== 'playing') return;
 
-    // Spawn enemies
     if (this.state.waveActive) {
       this.state.waveTimer++;
       
@@ -343,7 +313,7 @@ export class GameEngine {
           type: pending.type,
           x: PATH_PIXELS[0].x,
           y: PATH_PIXELS[0].y,
-          hp: stats.hp + (this.state.wave * stats.hp * 0.2), // HP scaling
+          hp: stats.hp + (this.state.wave * stats.hp * 0.2),
           maxHp: stats.hp + (this.state.wave * stats.hp * 0.2),
           speed: stats.speed,
           pathIndex: 0,
@@ -353,7 +323,7 @@ export class GameEngine {
       
       if (this.state.pendingEnemies.length === 0 && this.state.enemies.length === 0) {
         this.state.waveActive = false;
-        this.state.obolos += 50; // Wave clear bonus
+        this.state.obolos += 50;
         this.onStateChange({ ...this.state });
         
         if (this.state.wave >= WAVES.length) {
@@ -363,7 +333,6 @@ export class GameEngine {
       }
     }
 
-    // Move enemies
     for (let i = this.state.enemies.length - 1; i >= 0; i--) {
       const enemy = this.state.enemies[i];
       
@@ -372,7 +341,6 @@ export class GameEngine {
         if (enemy.invisibleTimer <= 0) enemy.invisible = false;
       }
       
-      // Calculate effective speed (Medusa Aura)
       let effectiveSpeed = enemy.speed;
       let isSlowed = false;
       for (const tower of this.state.towers) {
@@ -385,12 +353,11 @@ export class GameEngine {
         }
       }
       if (isSlowed) {
-        effectiveSpeed *= 0.5; // 50% slow
+        effectiveSpeed *= 0.5;
       }
       
       const targetPoint = PATH_PIXELS[enemy.pathIndex + 1];
       if (!targetPoint) {
-        // Reached end
         this.state.lives--;
         this.state.enemies.splice(i, 1);
         this.onStateChange({ ...this.state });
@@ -417,11 +384,9 @@ export class GameEngine {
       }
     }
 
-    // Towers attack
     for (const tower of this.state.towers) {
       if (tower.type === 'medusa') {
-        // Medusa Aura: damage over time
-        if (this.frameCount % 30 === 0) { // Deal damage twice a second
+        if (this.frameCount % 30 === 0) {
           for (const enemy of this.state.enemies) {
             if (enemy.invisible) continue;
             const dist = Math.sqrt(Math.pow(enemy.x - tower.x, 2) + Math.pow(enemy.y - tower.y, 2));
@@ -438,7 +403,6 @@ export class GameEngine {
         continue;
       }
       
-      // Find target
       let target: Enemy | null = null;
       let minPathDist = -1;
       
@@ -447,7 +411,6 @@ export class GameEngine {
         
         const dist = Math.sqrt(Math.pow(enemy.x - tower.x, 2) + Math.pow(enemy.y - tower.y, 2));
         if (dist <= tower.range) {
-          // Target enemy furthest along path
           const nextPoint = PATH_PIXELS[enemy.pathIndex + 1];
           let pathDist = enemy.pathIndex * 1000;
           if (nextPoint) {
@@ -477,7 +440,6 @@ export class GameEngine {
       }
     }
 
-    // Move projectiles
     for (let i = this.state.projectiles.length - 1; i >= 0; i--) {
       const proj = this.state.projectiles[i];
       const target = this.state.enemies.find(e => e.id === proj.targetId);
@@ -492,7 +454,6 @@ export class GameEngine {
       const dist = Math.sqrt(dx * dx + dy * dy);
       
       if (dist <= proj.speed) {
-        // Hit
         this.state.projectiles.splice(i, 1);
         
         if (proj.aoe && proj.aoe > 0) {
@@ -511,7 +472,6 @@ export class GameEngine {
       }
     }
     
-    // Clean up dead enemies
     const deadEnemies = this.state.enemies.filter(e => e.hp <= 0);
     if (deadEnemies.length > 0) {
       for (const dead of deadEnemies) {
@@ -525,27 +485,24 @@ export class GameEngine {
 
   private damageEnemy(enemy: Enemy, damage: number, slow?: number) {
     enemy.hp -= damage;
-    
-    if (slow && slow > 0) {
-      // Simple slow implementation: reduce speed temporarily (not fully implemented in movement yet, keeping it simple)
-      // For MVP, we just apply damage. A real slow would need a timer.
-    }
-    
     if (enemy.type === 'especial' && enemy.hp > 0 && !enemy.invisible && Math.random() < 0.3) {
       enemy.invisible = true;
-      enemy.invisibleTimer = 120; // 2 seconds at 60fps
+      enemy.invisibleTimer = 120;
     }
   }
 
   private draw() {
     this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
     
-    // Draw background grid (Stone floor)
-    this.ctx.fillStyle = '#1c1917'; // stone-900
-    this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
+    const bgFundo = this.assets.get('bg_fundo');
+    if (bgFundo && bgFundo.complete && bgFundo.naturalWidth > 0) {
+      this.ctx.drawImage(bgFundo, 0, 0, this.canvas.width, this.canvas.height);
+    } else {
+      this.ctx.fillStyle = '#1c1917';
+      this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
+    }
 
-    // Draw some floor variations (noise/patches)
-    this.ctx.fillStyle = '#292524'; // stone-800
+    this.ctx.fillStyle = '#292524';
     this.ctx.beginPath();
     this.ctx.arc(200, 150, 100, 0, Math.PI * 2);
     this.ctx.arc(600, 400, 150, 0, Math.PI * 2);
@@ -553,7 +510,7 @@ export class GameEngine {
     this.ctx.arc(700, 100, 80, 0, Math.PI * 2);
     this.ctx.fill();
 
-    this.ctx.strokeStyle = '#292524'; // faint grid
+    this.ctx.strokeStyle = '#292524';
     this.ctx.lineWidth = 1;
     for (let x = 0; x <= this.canvas.width; x += CELL_SIZE) {
       this.ctx.beginPath();
@@ -568,15 +525,14 @@ export class GameEngine {
       this.ctx.stroke();
     }
 
-    // Draw Scenery (Pools/Lava) BEFORE path
     for (const item of SCENERY) {
       if (item.type === 'pool') {
         const px = item.x * CELL_SIZE + CELL_SIZE / 2;
         const py = item.y * CELL_SIZE + CELL_SIZE / 2;
         
         const gradient = this.ctx.createRadialGradient(px, py, 0, px, py, item.radius || CELL_SIZE);
-        gradient.addColorStop(0, '#f59e0b'); // amber-500
-        gradient.addColorStop(0.4, '#dc2626'); // red-600
+        gradient.addColorStop(0, '#f59e0b');
+        gradient.addColorStop(0.4, '#dc2626');
         gradient.addColorStop(1, 'transparent');
         
         this.ctx.fillStyle = gradient;
@@ -586,8 +542,13 @@ export class GameEngine {
       }
     }
 
-    // Draw path (Paved stone road)
-    this.ctx.strokeStyle = '#292524'; // Dark border
+    const bgCaminho = this.assets.get('bg_caminho');
+    if (bgCaminho && bgCaminho.complete && bgCaminho.naturalWidth > 0) {
+      const pattern = this.ctx.createPattern(bgCaminho, 'repeat');
+      this.ctx.strokeStyle = pattern || '#292524';
+    } else {
+      this.ctx.strokeStyle = '#292524';
+    }
     this.ctx.lineWidth = CELL_SIZE + 4;
     this.ctx.lineCap = 'round';
     this.ctx.lineJoin = 'round';
@@ -598,47 +559,42 @@ export class GameEngine {
     }
     this.ctx.stroke();
 
-    this.ctx.strokeStyle = '#44403c'; // Main path
+    this.ctx.strokeStyle = '#44403c';
     this.ctx.lineWidth = CELL_SIZE - 2;
     this.ctx.stroke();
     
-    // Draw path inner (lighter stone)
-    this.ctx.strokeStyle = '#57534e'; // stone-600
+    this.ctx.strokeStyle = '#57534e';
     this.ctx.lineWidth = CELL_SIZE - 10;
-    this.ctx.setLineDash([15, 10]); // Make it look like stone slabs
+    this.ctx.setLineDash([15, 10]);
     this.ctx.stroke();
-    this.ctx.setLineDash([]); // Reset
+    this.ctx.setLineDash([]);
 
-    // Draw Scenery (Obstacles like columns and rocks) AFTER path
     for (const item of SCENERY) {
       const px = item.x * CELL_SIZE + CELL_SIZE / 2;
       const py = item.y * CELL_SIZE + CELL_SIZE / 2;
 
       if (item.type === 'column') {
-        // Shadow
         this.ctx.fillStyle = 'rgba(0,0,0,0.5)';
         this.ctx.beginPath();
         this.ctx.ellipse(px + 8, py + 8, 15, 8, Math.PI / 4, 0, Math.PI * 2);
         this.ctx.fill();
 
-        // Broken column base
-        this.ctx.fillStyle = '#d6d3d1'; // stone-300
+        this.ctx.fillStyle = '#d6d3d1';
         this.ctx.beginPath();
         this.ctx.arc(px, py, 14, 0, Math.PI * 2);
         this.ctx.fill();
         
-        this.ctx.fillStyle = '#a8a29e'; // stone-400
+        this.ctx.fillStyle = '#a8a29e';
         this.ctx.beginPath();
         this.ctx.arc(px - 2, py - 2, 10, 0, Math.PI * 2);
         this.ctx.fill();
       } else if (item.type === 'rock') {
-        // Shadow
         this.ctx.fillStyle = 'rgba(0,0,0,0.5)';
         this.ctx.beginPath();
         this.ctx.ellipse(px + 8, py + 8, 18, 10, 0, 0, Math.PI * 2);
         this.ctx.fill();
 
-        this.ctx.fillStyle = '#57534e'; // stone-600
+        this.ctx.fillStyle = '#57534e';
         this.ctx.beginPath();
         this.ctx.moveTo(px - 15, py + 10);
         this.ctx.lineTo(px - 5, py - 15);
@@ -647,8 +603,7 @@ export class GameEngine {
         this.ctx.lineTo(px + 5, py + 15);
         this.ctx.fill();
         
-        // Rock highlight
-        this.ctx.fillStyle = '#78716c'; // stone-500
+        this.ctx.fillStyle = '#78716c';
         this.ctx.beginPath();
         this.ctx.moveTo(px - 10, py + 5);
         this.ctx.lineTo(px - 2, py - 10);
@@ -657,14 +612,13 @@ export class GameEngine {
       }
     }
 
-    // Draw Selected Tower Range Indicator
     if (this.selectedTowerId) {
       const tower = this.state.towers.find(t => t.id === this.selectedTowerId);
       if (tower) {
         const stats = TOWER_STATS[tower.type];
         const gradient = this.ctx.createRadialGradient(tower.x, tower.y, 0, tower.x, tower.y, tower.range);
-        gradient.addColorStop(0, `${stats.color}80`); // Bright center
-        gradient.addColorStop(1, `${stats.color}00`); // Fades to transparent
+        gradient.addColorStop(0, `${stats.color}80`);
+        gradient.addColorStop(1, `${stats.color}00`);
         
         this.ctx.fillStyle = gradient;
         this.ctx.beginPath();
@@ -677,11 +631,10 @@ export class GameEngine {
       }
     }
 
-    // Draw Medusa Auras
     for (const tower of this.state.towers) {
       if (tower.type === 'medusa') {
         const stats = TOWER_STATS[tower.type];
-        const pulse = Math.sin(this.frameCount * 0.05) * 0.2 + 0.8; // Pulse between 0.6 and 1.0
+        const pulse = Math.sin(this.frameCount * 0.05) * 0.2 + 0.8;
         const gradient = this.ctx.createRadialGradient(tower.x, tower.y, 0, tower.x, tower.y, tower.range * pulse);
         gradient.addColorStop(0, `${stats.color}40`); 
         gradient.addColorStop(1, `${stats.color}00`); 
@@ -693,25 +646,21 @@ export class GameEngine {
       }
     }
 
-    // Draw towers (Greek columns/structures)
     for (const tower of this.state.towers) {
       const stats = TOWER_STATS[tower.type];
       const img = this.assets.get(`tower_${tower.type}`);
       
       if (img && img.complete && img.naturalWidth > 0) {
-        // Draw sprite
         this.ctx.drawImage(img, tower.x - CELL_SIZE / 2, tower.y - CELL_SIZE / 2, CELL_SIZE, CELL_SIZE);
       } else {
-        // Fallback Base
-        this.ctx.fillStyle = '#292524'; // dark stone base
+        this.ctx.fillStyle = '#292524';
         this.ctx.beginPath();
         this.ctx.arc(tower.x, tower.y, CELL_SIZE / 2 - 2, 0, Math.PI * 2);
         this.ctx.fill();
-        this.ctx.strokeStyle = '#78716c'; // stone trim
+        this.ctx.strokeStyle = '#78716c';
         this.ctx.lineWidth = 2;
         this.ctx.stroke();
 
-        // Fallback Pillar
         const gradient = this.ctx.createRadialGradient(tower.x, tower.y, 0, tower.x, tower.y, CELL_SIZE / 2 - 6);
         gradient.addColorStop(0, stats.color);
         gradient.addColorStop(1, '#1c1917');
@@ -722,16 +671,14 @@ export class GameEngine {
         this.ctx.fill();
       }
       
-      // Draw level indicator (Roman numerals for epic feel)
       const romanLevels = ['I', 'II', 'III'];
-      this.ctx.fillStyle = '#fef08a'; // yellow-200
+      this.ctx.fillStyle = '#fef08a';
       this.ctx.font = 'bold 12px Cinzel, serif';
       this.ctx.textAlign = 'center';
       this.ctx.textBaseline = 'middle';
       this.ctx.fillText(romanLevels[tower.level], tower.x, tower.y + CELL_SIZE / 2 + 10);
     }
 
-    // Draw enemies (Glowing souls)
     for (const enemy of this.state.enemies) {
       if (enemy.invisible) {
         this.ctx.globalAlpha = 0.3;
@@ -743,7 +690,6 @@ export class GameEngine {
       if (img && img.complete && img.naturalWidth > 0) {
         this.ctx.drawImage(img, enemy.x - stats.radius, enemy.y - stats.radius, stats.radius * 2, stats.radius * 2);
       } else {
-        // Fallback
         this.ctx.shadowBlur = 15;
         this.ctx.shadowColor = stats.color;
         
@@ -752,25 +698,22 @@ export class GameEngine {
         this.ctx.arc(enemy.x, enemy.y, stats.radius, 0, Math.PI * 2);
         this.ctx.fill();
         
-        // Reset shadow
         this.ctx.shadowBlur = 0;
       }
       
       this.ctx.globalAlpha = 1.0;
       
-      // Draw HP bar
       const hpPercent = enemy.hp / enemy.maxHp;
-      this.ctx.fillStyle = '#7f1d1d'; // red-900
+      this.ctx.fillStyle = '#7f1d1d';
       this.ctx.fillRect(enemy.x - 10, enemy.y - stats.radius - 8, 20, 3);
-      this.ctx.fillStyle = '#22c55e'; // green-500
+      this.ctx.fillStyle = '#22c55e';
       this.ctx.fillRect(enemy.x - 10, enemy.y - stats.radius - 8, 20 * hpPercent, 3);
     }
 
-    // Draw projectiles
     for (const proj of this.state.projectiles) {
       this.ctx.shadowBlur = 10;
       this.ctx.shadowColor = TOWER_STATS[proj.type].color;
-      this.ctx.fillStyle = '#fef08a'; // bright core
+      this.ctx.fillStyle = '#fef08a';
       this.ctx.beginPath();
       this.ctx.arc(proj.x, proj.y, 4, 0, Math.PI * 2);
       this.ctx.fill();

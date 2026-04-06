@@ -40,10 +40,10 @@ export const SCENERY = [
 ];
 
 export const ENEMY_STATS: Record<EnemyType, { hp: number; speed: number; reward: number; color: string; radius: number }> = {
-  comum: { hp: 50, speed: 1.5, reward: 10, color: '#e2e8f0', radius: 12 }, // Pale soul
-  rapida: { hp: 25, speed: 3, reward: 15, color: '#fde047', radius: 10 }, // Yellow spark
-  tanque: { hp: 150, speed: 0.8, reward: 25, color: '#b45309', radius: 16 }, // Bronze armored
-  especial: { hp: 60, speed: 1.8, reward: 30, color: '#a855f7', radius: 12 }, // Purple elite
+  comum: { hp: 50, speed: 1.5, reward: 10, color: '#e2e8f0', radius: 18 }, // Pale soul
+  rapida: { hp: 25, speed: 3, reward: 15, color: '#fde047', radius: 14 }, // Yellow spark
+  tanque: { hp: 150, speed: 0.8, reward: 25, color: '#b45309', radius: 24 }, // Bronze armored
+  especial: { hp: 60, speed: 1.8, reward: 30, color: '#a855f7', radius: 18 }, // Purple elite
 };
 
 export const TOWER_STATS: Record<TowerType, { name: string; desc: string; cost: number[]; damage: number[]; range: number[]; fireRate: number[]; color: string }> = {
@@ -123,4 +123,54 @@ export const CORPORATE_MESSAGES = [
   { sender: "Poseidon (Infraestrutura)", text: "A torre foi entregue dentro do espírito do contrato. A letra é uma interpretação. Toda letra é." },
   { sender: "Poseidon (Infraestrutura)", text: "Eu sou uma ilha cercada por idiotas." },
   { sender: "Poseidon (Infraestrutura)", text: "O subempreiteiro era o mais competitivo disponível. Competitivo em preço. Os outros aspectos são subjetivos." }
+  
+  // HERA (Compliance e Burocracia)
+  { sender: "Hera (Compliance)", text: "Recebi sua solicitação de upgrade. Precisarei de um Formulário de Justificativa de Investimento Infernal." },
+  { sender: "Hera (Compliance)", text: "Isso não está previsto no Manual Operacional do Submundo, edição revisada de 847 a.C. Vou abrir um ticket." },
+  { sender: "Hera (Compliance)", text: "A fuga de almas requer o preenchimento do formulário F-104 ANTES da tentativa de recaptura. Siga o processo." },
+  { sender: "Hera (Compliance)", text: "A auditoria surpresa no Tártaro foi reagendada devido a um conflito com meu cruzeiro corporativo." },
+  { sender: "Hera (Compliance)", text: "Anotado. Sua reclamação sobre falta de verba foi anexada ao processo que será analisado na 2ª quinzena de 2099." },
+
+  // PROTEU (Comercial e Roubo de Crédito)
+  { sender: "Proteu (Comercial)", text: "Hades é um executor brilhante. Executor é quem faz. Eu sou quem direciona. São funções complementares." },
+  { sender: "Proteu (Comercial)", text: "Zeus, sua visão para este projeto foi o que tornou tudo possível. Eu apenas coordenei a execução do Hades." },
+  { sender: "Proteu (Comercial)", text: "Os números do Submundo estão ótimos este trimestre. Fico feliz em ter liderado essa virada de mindset." },
+  { sender: "Proteu (Comercial)", text: "Eu não assumiria o crédito sozinho. Foi um esforço do grupo. Eu apenas sintetizei e dei o rosto." },
+  { sender: "Proteu (Comercial)", text: "Hades me mandou um memorando com objeções. Arquivei. O bom líder protege a equipe das próprias inseguranças." },
+
+  // POSEIDON (Infraestrutura e Passivo-Agressividade)
+  { sender: "Poseidon (Infraestrutura)", text: "A torre foi entregue dentro do espírito do contrato. A letra é uma interpretação. Toda letra é." },
+  { sender: "Poseidon (Infraestrutura)", text: "Eu sou uma ilha cercada por idiotas." },
+  { sender: "Poseidon (Infraestrutura)", text: "O subempreiteiro era o mais competitivo disponível. Competitivo em preço. Os outros aspectos são subjetivos." },
+  { sender: "Poseidon (Infraestrutura)", text: "O vazamento no Rio Estige não é um defeito. É uma 'funcionalidade de irrigação passiva'." },
+  { sender: "Poseidon (Infraestrutura)", text: "Se vocês queriam pedras que não esfarelam, deveriam ter especificado isso na licitação." },
+  { sender: "Poseidon (Infraestrutura)", text: "A culpa não é da minha empreiteira se as almas gregas ficaram mais pesadas nos últimos milênios." },
+
+  // APOLO (Marketing e "Spin" Corporativo)
+  { sender: "Apolo (Marketing)", text: "Não é uma falha de contenção. É uma jornada de autodescoberta interrompida prematuramente. Vou preparar um press release." },
+  { sender: "Apolo (Marketing)", text: "Transformamos a 'Crise de Fugas' na 'Semana do Portão Aberto'. O engajamento nas preces subiu 40%!" },
+  { sender: "Apolo (Marketing)", text: "Precisamos de uma logo mais amigável para o Cérbero. Três cabeças assustam os stakeholders." },
+  { sender: "Apolo (Marketing)", text: "As almas não estão 'fugindo do tormento', elas estão 'buscando recolocação no plano terreno'." },
+
+  // AFRODITE (RH e Ameaças Veladas)
+  { sender: "Afrodite (RH)", text: "Esse conflito entre Zeus e Hades não é novo. Eu estava lá. Não vou comentar. Mas estava lá." },
+  { sender: "Afrodite (RH)", text: "Lembrete amigável: O RH sabe quem está usando a conta premium de néctar na sala de descanso." },
+  { sender: "Afrodite (RH)", text: "A tentativa de 'Dinâmica de Grupo' no Tártaro resultou em 40 mutilações. Consideramos um sucesso parcial." },
+  { sender: "Afrodite (RH)", text: "Estamos implementando o 'Casual Friday' no Submundo. Almas torturadas podem usar roupas leves." },
+
+  // HERMES (Logística, o único que trabalha)
+  { sender: "Hermes (Logística)", text: "Já passei o recado de Zeus para Hades, e de Hades para Zeus. Nenhum vai responder. Já documentei tudo." },
+  { sender: "Hermes (Logística)", text: "Aviso de atraso: Sua remessa de pedras para a Torre de Sísifo foi extraviada. Já documentei a perda." },
+  { sender: "Hermes (Logística)", text: "Entreguei o memorando urgente de Hades para Zeus. Zeus usou como porta-copos. Está em ata." },
+  { sender: "Hermes (Logística)", text: "Mais uma fuga no setor 4. Redigindo relatório de incidente #4.892. Minha tendinite está piorando." },
+
+  // ZEUS (Chairman e FPR)
+  { sender: "Zeus (CEO)", text: "O sucesso da contenção de ontem é prova da nossa excelente estratégia de delegação de riscos." },
+  { sender: "Zeus (CEO)", text: "Cortamos os fundos do Submundo para incentivar a inovação disruptiva. De nada, Hades." },
+  { sender: "Zeus (CEO)", text: "A burocracia é o que nos separa dos titãs. Bem, isso e os raios." },
+  
+  // HADES (O gerente exausto)
+  { sender: "Hades (Operações)", text: "Para constar em ata: eu avisei que a Torre de Sísifo precisava de manutenção há três séculos." },
+  { sender: "Hades (Operações)", text: "O orçamento da segurança foi cortado de novo. Pelo visto, conter os mortos agora é 'trabalho voluntário'." },
+  { sender: "Hades (Operações)", text: "Se mais um herói de Atenas for mandado para cá com 'status VIP', eu mesmo o jogo no Tártaro." }
 ];

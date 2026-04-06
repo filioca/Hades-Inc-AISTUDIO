@@ -3,7 +3,7 @@ import { GameEngine } from '../game/Engine';
 import { GameState, TowerType } from '../types';
 import { TOWER_STATS, WAVES } from '../constants';
 import { Button } from './ui/button';
-import { MessageSquare, FastForward, Play, X, ArrowUpCircle } from 'lucide-react';
+import { MessageSquare, X, ArrowUpCircle } from 'lucide-react';
 
 const CORPORATE_MESSAGES = [
   { sender: 'Hermes', text: 'Lembrete: A meta de almas processadas aumentou 20% este trimestre.' },
@@ -13,11 +13,12 @@ const CORPORATE_MESSAGES = [
   { sender: 'Cérbero', text: '*Sons de mastigação de relatórios*' },
 ];
 
-const SLOT_IMAGES: Record<TowerType, string> = {
-  caronte: 'https://i.imgur.com/RqrDdti.png',
-  medusa: 'https://i.imgur.com/l3DGtFx.png',
-  cerbero: 'https://i.imgur.com/4lAfQNd.png',
-  sisifo: 'https://i.imgur.com/eWTLfnX.png',
+const SENDER_COLORS: Record<string, string> = {
+  'Hermes': '#0f766e',
+  'Atena': '#0369a1',
+  'Hades': '#991b1b',
+  'RH': '#9d174d',
+  'Cérbero': '#9a3412',
 };
 
 const TOWER_SPRITES: Record<TowerType, string> = {
@@ -105,11 +106,15 @@ export default function GameScreen({ gameState, onStateChange }: GameScreenProps
     if (!engineRef.current || gameState?.status !== 'playing') return;
 
     const rect = canvasRef.current!.getBoundingClientRect();
-    const x = e.clientX - rect.left;
-    const y = e.clientY - rect.top;
+    
+    // CORREÇÃO CRÍTICA: Ajustando a escala do clique para bater com a engine interna
+    const scaleX = canvasRef.current!.width / rect.width;
+    const scaleY = canvasRef.current!.height / rect.height;
+    
+    const x = (e.clientX - rect.left) * scaleX;
+    const y = (e.clientY - rect.top) * scaleY;
     
     const CELL_SIZE = 40;
-    // Check if clicked on existing tower
     const clickedTower = gameState.towers?.find(t => 
       Math.abs(t.x - x) < CELL_SIZE / 2 && Math.abs(t.y - y) < CELL_SIZE / 2
     );
@@ -120,7 +125,6 @@ export default function GameScreen({ gameState, onStateChange }: GameScreenProps
       return;
     }
 
-    // Build new tower
     if (selectedTowerType) {
       const gridX = Math.floor(x / CELL_SIZE);
       const gridY = Math.floor(y / CELL_SIZE);
@@ -154,7 +158,6 @@ export default function GameScreen({ gameState, onStateChange }: GameScreenProps
     if (selectedTowerId && engineRef.current) {
       const success = engineRef.current.upgradeTower(selectedTowerId);
       if (success) {
-        // Apply penalty every 3 upgrades
         if (Math.random() < 0.33) {
           engineRef.current.applyZeusPenalty();
         }
@@ -173,8 +176,7 @@ export default function GameScreen({ gameState, onStateChange }: GameScreenProps
   const selectedTower = gameState.towers?.find(t => t.id === selectedTowerId);
 
   return (
-    <div className="flex flex-col h-screen bg-stone-950 overflow-hidden">
-      {/* Preloader */}
+    <div className="flex h-screen bg-stone-950 overflow-hidden">
       {loadingProgress.loaded < loadingProgress.total && (
         <div className="fixed inset-0 bg-stone-950 z-50 flex items-center justify-center">
           <div className="text-amber-500 font-serif text-2xl tracking-widest uppercase animate-pulse">
@@ -183,82 +185,93 @@ export default function GameScreen({ gameState, onStateChange }: GameScreenProps
         </div>
       )}
 
-      {/* HUD Bar */}
-      <div 
-        className="h-16 flex items-center justify-center shrink-0 shadow-md relative z-10 bg-stone-900 border-b-2 border-amber-900/50"
-      >
-        <div className="flex items-center justify-between w-full max-w-5xl px-6">
-          <div className="flex items-center gap-8">
-            <div className="flex items-center gap-2 text-amber-500 font-bold text-xl font-serif">
-              <img src="https://i.imgur.com/ONYTEKF.png" alt="Moedas" className="w-6 h-6 object-contain" />
-              <span>{gameState.obolos}</span>
+      {/* Coluna Esquerda (Header + Game + Footer) ocupando o flex-1 */}
+      <div className="flex-1 flex flex-col overflow-hidden relative">
+
+        {/* 1. HEADER (Agora restrito à coluna esquerda) */}
+        <div 
+          className="h-24 flex items-center justify-center shrink-0 relative z-10 bg-stone-900 border-b-2 border-amber-900/50"
+          style={{ backgroundImage: "url('https://imgur.com/1nSG39m.png')", backgroundSize: 'contain', backgroundPosition: 'center', backgroundRepeat: 'no-repeat' }}
+        >
+          <div className="flex items-center justify-between w-full px-12 pt-4">
+            <div className="flex items-center gap-8 w-1/3">
+              <div className="flex items-center gap-2 text-amber-500 font-bold text-xl font-serif">
+                <img src="https://i.imgur.com/ONYTEKF.png" alt="Moedas" className="w-6 h-6 object-contain" />
+                <span>{gameState.obolos}</span>
+              </div>
+              <div className="flex items-center gap-2 text-red-600 font-bold text-xl font-serif">
+                <img src="https://i.imgur.com/LP9KhkB.png" alt="Vidas" className="w-6 h-6 object-contain" />
+                <span>{gameState.lives}</span>
+              </div>
+              <div className="flex items-center gap-2 text-stone-400 font-bold text-xl font-serif">
+                <img src="https://i.imgur.com/wUqv0Pg.png" alt="Inimigos Mortos" className="w-6 h-6 object-contain" />
+                <span>{gameState.enemiesKilled}</span>
+              </div>
             </div>
-            <div className="flex items-center gap-2 text-red-600 font-bold text-xl font-serif">
-              <img src="https://i.imgur.com/LP9KhkB.png" alt="Vidas" className="w-6 h-6 object-contain" />
-              <span>{gameState.lives}</span>
+            
+            <div className="flex items-center justify-center w-1/3 pt-2">
+              <div className="text-stone-300 font-bold font-serif text-lg tracking-widest uppercase drop-shadow-md">
+                Onda {gameState.wave} <span className="text-stone-600">/</span> {WAVES.length}
+              </div>
             </div>
-            <div className="flex items-center gap-2 text-stone-400 font-bold text-xl font-serif">
-              <img src="https://i.imgur.com/wUqv0Pg.png" alt="Inimigos Mortos" className="w-6 h-6 object-contain" />
-              <span>{gameState.enemiesKilled}</span>
+
+            <div className="flex items-center justify-end w-1/3">
+              <button 
+                onClick={() => engineRef.current?.startNextWave()} 
+                disabled={gameState.waveActive || gameState.wave >= WAVES.length}
+                className={`relative w-48 h-12 flex items-center justify-center font-serif uppercase tracking-wider font-bold transition-all duration-300 border-2 rounded-sm ${!gameState.waveActive ? 'hover:scale-105 hover:brightness-110 cursor-pointer text-amber-400 border-amber-500 bg-stone-800 drop-shadow-[0_2px_2px_rgba(0,0,0,0.8)]' : 'opacity-50 cursor-not-allowed text-stone-400 border-stone-700 bg-stone-900 drop-shadow-[0_2px_2px_rgba(0,0,0,0.8)]'}`}
+              >
+                {gameState.waveActive ? 'Em Progresso' : 'Próxima Onda'}
+              </button>
             </div>
-          </div>
-          
-          <div className="flex items-center gap-6">
-            <div className="text-stone-300 font-bold font-serif text-lg tracking-widest uppercase drop-shadow-md">
-              Onda {gameState.wave} <span className="text-stone-600">/</span> {WAVES.length}
-            </div>
-            <button 
-              onClick={() => engineRef.current?.startNextWave()} 
-              disabled={gameState.waveActive || gameState.wave >= WAVES.length}
-              className={`relative w-48 h-12 flex items-center justify-center font-serif uppercase tracking-wider font-bold transition-all duration-300 border-2 rounded-sm ${!gameState.waveActive ? 'hover:scale-105 hover:brightness-110 cursor-pointer text-amber-400 border-amber-500 bg-stone-800 drop-shadow-[0_2px_2px_rgba(0,0,0,0.8)]' : 'opacity-50 cursor-not-allowed text-stone-400 border-stone-700 bg-stone-900 drop-shadow-[0_2px_2px_rgba(0,0,0,0.8)]'}`}
-              style={{ backgroundImage: 'linear-gradient(to bottom, rgba(28, 25, 23, 0.8), rgba(41, 37, 36, 0.9))' }}
-            >
-              {gameState.waveActive ? 'Em Progresso' : 'Próxima Onda'}
-            </button>
           </div>
         </div>
+
+        {/* 2. GAME AREA (Canvas) */}
+        <div className={`flex-1 flex items-center justify-center p-4 overflow-auto relative z-10 ${isShaking ? 'animate-[shake_0.5s_ease-in-out]' : ''}`}>
+          <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))] from-stone-900/50 to-stone-950 pointer-events-none"></div>
+          <div className="relative shadow-[0_0_30px_rgba(0,0,0,0.8)] rounded-sm overflow-hidden border-4 border-stone-800" style={{ aspectRatio: '800/600', maxHeight: '100%', maxWidth: '100%' }}>
+            <canvas
+              ref={canvasRef}
+              width={800}
+              height={600}
+              onClick={handleCanvasClick}
+              className="bg-stone-900 cursor-crosshair w-full h-full object-contain"
+            />
+          </div>
+        </div>
+        
+        {/* 3. FOOTER (Ticker) */}
+        <div className="h-32 flex items-center justify-center shrink-0 relative z-10 shadow-[0_-5px_15px_rgba(0,0,0,0.3)] border-t-2 border-amber-900/50" style={{ backgroundImage: "url('https://imgur.com/KgMqDRI.png')", backgroundSize: 'cover', backgroundPosition: 'center' }}>
+          <div className="flex items-center w-full max-w-5xl px-6 h-full py-4">
+            
+            <div className="flex-1 relative h-full flex items-end mt-4">
+              {/* Speech bubble arrow */}
+              <div className="absolute -top-2 left-10 w-0 h-0 border-l-[8px] border-l-transparent border-r-[8px] border-r-transparent border-b-[12px] border-b-stone-950 z-20"></div>
+
+              {/* Name Tag */}
+              <div 
+                className="absolute -top-6 left-6 px-4 py-1 text-white font-bold font-serif text-sm uppercase tracking-wider border-2 border-stone-900 rounded-md shadow-lg z-30"
+                style={{ backgroundColor: SENDER_COLORS[CORPORATE_MESSAGES[tickerIndex].sender] || '#4b5563' }}
+              >
+                {CORPORATE_MESSAGES[tickerIndex].sender}
+              </div>
+
+              {/* Dialog Box */}
+              <div className="w-full h-full bg-stone-950 border-4 border-stone-900 p-5 pt-4 rounded-lg shadow-2xl opacity-100 relative flex items-center justify-center">
+                <p className="text-white text-center font-sans text-base leading-relaxed m-0 w-full" key={tickerIndex}>
+                  <TypewriterText text={`"${CORPORATE_MESSAGES[tickerIndex].text}"`} />
+                </p>
+              </div>
+            </div>
+
+          </div>
+        </div>
+
       </div>
 
-      <div className="flex flex-1 overflow-hidden">
-        {/* Game Area */}
-        <div className={`flex-1 flex flex-col bg-stone-950 overflow-hidden relative ${isShaking ? 'animate-[shake_0.5s_ease-in-out]' : ''}`}>
-          <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))] from-stone-900/50 to-stone-950 pointer-events-none"></div>
-          <div className="flex-1 flex items-center justify-center p-4 overflow-auto relative z-10">
-            <div className="relative shadow-[0_0_30px_rgba(0,0,0,0.8)] rounded-sm overflow-hidden border-4 border-stone-800" style={{ aspectRatio: '800/600', maxHeight: '100%', maxWidth: '100%' }}>
-              <canvas
-                ref={canvasRef}
-                width={800}
-                height={600}
-                onClick={handleCanvasClick}
-                className="bg-stone-900 cursor-crosshair w-full h-full object-contain"
-              />
-            </div>
-          </div>
-          
-          {/* Corporate Ticker */}
-          <div 
-            className="h-12 flex items-center justify-center shrink-0 overflow-hidden relative z-10 shadow-[0_-5px_15px_rgba(0,0,0,0.3)] bg-stone-900 border-t-2 border-amber-900/50"
-          >
-            <div className="flex items-center w-full max-w-5xl px-6">
-              <div className="flex items-center gap-2 text-amber-600 shrink-0 mr-6">
-                <MessageSquare className="w-5 h-5" />
-                <span className="text-sm font-bold font-serif uppercase tracking-widest">Olimpo S.A.</span>
-              </div>
-              <div className="flex-1 relative h-full border-l border-stone-700/50 pl-6">
-                <div 
-                  key={tickerIndex}
-                  className="absolute inset-0 flex items-center text-sm"
-                >
-                  <span className="font-bold font-serif text-stone-300 mr-3 uppercase tracking-wider">{CORPORATE_MESSAGES[tickerIndex].sender}:</span>
-                  <TypewriterText text={`"${CORPORATE_MESSAGES[tickerIndex].text}"`} />
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* Sidebar */}
-        <div className="w-80 bg-stone-900 border-l-2 border-amber-900/50 flex flex-col shrink-0 shadow-[-5px_0_15px_rgba(0,0,0,0.3)] relative z-20 overflow-y-auto">
+      {/* Coluna Direita (Sidebar) - Agora com altura total (h-full) */}
+      <div className="w-80 h-full bg-stone-900 border-l-2 border-amber-900/50 flex flex-col shrink-0 shadow-[-5px_0_15px_rgba(0,0,0,0.3)] relative z-20 overflow-y-auto">
           <div className="p-5 border-b border-stone-800 bg-stone-950/30 shrink-0">
             <h2 className="text-xl font-serif font-bold text-stone-100 mb-4 uppercase tracking-widest text-center">Projetos Sociais</h2>
             <div className="flex flex-col gap-4">
@@ -274,9 +287,7 @@ export default function GameScreen({ gameState, onStateChange }: GameScreenProps
                       ? 'border-amber-500 scale-[1.02] drop-shadow-[0_0_15px_rgba(212,175,55,0.3)]' 
                       : 'border-stone-700 hover:border-stone-500 hover:scale-[1.02]'
                   }`}
-                  style={{
-                    backgroundImage: 'linear-gradient(to bottom, rgba(28, 25, 23, 0.8), rgba(41, 37, 36, 0.9))',
-                  }}
+                  style={{ backgroundImage: 'linear-gradient(to bottom, rgba(28, 25, 23, 0.8), rgba(41, 37, 36, 0.9))' }}
                 >
                   <img src={TOWER_SPRITES[type as TowerType]} alt={type} className="w-full h-24 object-contain drop-shadow-xl mb-2" />
                   <div className="w-full text-center border-t border-stone-700/50 pt-2">
@@ -376,24 +387,28 @@ export default function GameScreen({ gameState, onStateChange }: GameScreenProps
             )}
           </div>
         </div>
-      </div>
 
-      {/* Zeus Audit Modal */}
       {zeusModalOpen && (
         <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 backdrop-blur-sm">
-          <div className="bg-stone-900 border-2 border-amber-500/50 p-8 max-w-md w-full shadow-[0_0_50px_rgba(245,158,11,0.2)] rounded-sm relative overflow-hidden">
-            <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-transparent via-amber-500 to-transparent"></div>
-            <h2 className="text-2xl font-serif font-bold text-amber-500 mb-4 uppercase tracking-widest text-center">Auditoria do Olimpo</h2>
-            <p className="text-stone-300 mb-6 font-sans text-center">
+          <div className="bg-stone-950 border-4 border-stone-900 p-10 max-w-lg w-full shadow-2xl rounded-lg relative opacity-100 mt-10">
+            {/* Name Tag */}
+            <div className="absolute -top-5 left-8 bg-yellow-700 border-2 border-stone-900 px-4 py-1 rounded-md shadow-lg">
+              <span className="text-white font-bold font-serif uppercase tracking-wider">Zeus (CEO)</span>
+            </div>
+            {/* Speech bubble arrow */}
+            <div className="absolute -top-3 left-12 w-0 h-0 border-l-[8px] border-l-transparent border-r-[8px] border-r-transparent border-b-[12px] border-b-stone-950"></div>
+
+            <h2 className="text-2xl font-serif font-bold text-amber-500 mb-6 uppercase tracking-widest text-left mt-2">Auditoria do Olimpo</h2>
+            <p className="text-white mb-8 font-sans text-left text-lg leading-relaxed">
               Aprovar esta promoção custará <strong className="text-amber-500">{upgradeCost} Óbolos</strong>. 
               <br/><br/>
               <span className="text-sm text-stone-400 italic">Aviso: O CEO Zeus pode exigir cortes de custos (penalidades) aleatoriamente durante promoções.</span>
             </p>
             <div className="flex gap-4">
-              <Button variant="outline" className="flex-1 border-stone-700 text-stone-400 hover:bg-stone-800 hover:text-stone-200 font-serif uppercase tracking-wider" onClick={handleZeusCancel}>
+              <Button variant="outline" className="flex-1 border-2 border-stone-800 bg-stone-900 text-white hover:bg-stone-800 font-serif uppercase tracking-wider" onClick={handleZeusCancel}>
                 Cancelar
               </Button>
-              <Button className="flex-1 bg-amber-800 hover:bg-amber-700 text-stone-100 font-serif uppercase tracking-wider" onClick={handleZeusConfirm}>
+              <Button className="flex-1 bg-amber-800 hover:bg-amber-700 text-white font-serif uppercase tracking-wider border-2 border-amber-900" onClick={handleZeusConfirm}>
                 Assinar
               </Button>
             </div>
@@ -401,31 +416,38 @@ export default function GameScreen({ gameState, onStateChange }: GameScreenProps
         </div>
       )}
 
-      {/* Game Over / Victory Overlay */}
       {(gameState.status === 'gameover' || gameState.status === 'victory') && (
         <div className="fixed inset-0 bg-black/90 flex items-center justify-center z-50 backdrop-blur-md">
-          <div className="text-center max-w-lg p-8 border-2 border-stone-800 bg-stone-950 shadow-2xl rounded-sm relative overflow-hidden">
-            <div className={`absolute top-0 left-0 w-full h-2 ${gameState.status === 'victory' ? 'bg-emerald-600' : 'bg-red-900'}`}></div>
-            <h1 className={`text-6xl font-serif font-bold mb-6 uppercase tracking-widest ${gameState.status === 'victory' ? 'text-emerald-500' : 'text-red-700'}`}>
+          <div className="bg-stone-950 border-4 border-stone-900 p-10 max-w-xl w-full shadow-2xl rounded-lg relative opacity-100 mt-10">
+            {/* Name Tag */}
+            <div className="absolute -top-5 left-8 px-4 py-1 rounded-md shadow-lg border-2 border-stone-900" style={{ backgroundColor: gameState.status === 'victory' ? '#047857' : '#991b1b' }}>
+              <span className="text-white font-bold font-serif uppercase tracking-wider">
+                {gameState.status === 'victory' ? 'Olimpo S.A. (RH)' : 'Hades (Diretoria)'}
+              </span>
+            </div>
+            {/* Speech bubble arrow */}
+            <div className="absolute -top-3 left-12 w-0 h-0 border-l-[8px] border-l-transparent border-r-[8px] border-r-transparent border-b-[12px] border-b-stone-950"></div>
+
+            <h1 className={`text-4xl font-serif font-bold mb-6 uppercase tracking-widest text-left mt-2 ${gameState.status === 'victory' ? 'text-emerald-500' : 'text-red-600'}`}>
               {gameState.status === 'victory' ? 'Meta Atingida' : 'Demissão'}
             </h1>
-            <p className="text-xl text-stone-300 mb-8 font-sans">
+            <p className="text-lg text-white mb-8 font-sans text-left leading-relaxed">
               {gameState.status === 'victory' 
-                ? 'Olimpo S.A. reconhece sua eficiência. Seu bônus anual foi aprovado.' 
-                : 'Muitas almas escaparam. O RH entrará em contato para o desligamento.'}
+                ? 'Olimpo S.A. reconhece sua eficiência. Seu bônus anual foi aprovado. O Tártaro continuará operando com margens de lucro aceitáveis.' 
+                : 'Muitas almas escaparam. Sua incompetência custou caro aos acionistas. O RH entrará em contato para o seu desligamento imediato.'}
             </p>
-            <div className="grid grid-cols-2 gap-4 mb-8 text-left bg-stone-900 p-6 rounded-sm border border-stone-800">
+            <div className="grid grid-cols-2 gap-4 mb-8 text-left bg-stone-900 p-6 rounded-md border-2 border-stone-800">
               <div className="text-stone-400 font-sans uppercase tracking-wider text-sm font-bold">Almas Processadas</div>
-              <div className="text-stone-200 font-serif text-xl text-right">{gameState.enemiesKilled}</div>
+              <div className="text-white font-serif text-xl text-right">{gameState.enemiesKilled}</div>
               <div className="text-stone-400 font-sans uppercase tracking-wider text-sm font-bold">Orçamento Final</div>
               <div className="text-amber-500 font-serif text-xl text-right">{gameState.obolos} Óbolos</div>
               <div className="text-stone-400 font-sans uppercase tracking-wider text-sm font-bold">Auditorias (Zeus)</div>
-              <div className="text-stone-200 font-serif text-xl text-right">{gameState.zeusPenalties}</div>
+              <div className="text-white font-serif text-xl text-right">{gameState.zeusPenalties}</div>
             </div>
             <Button 
               size="lg" 
               onClick={() => window.location.reload()}
-              className="w-full font-serif uppercase tracking-widest text-lg h-14 bg-stone-800 hover:bg-stone-700 text-stone-200 border border-stone-600"
+              className="w-full font-serif uppercase tracking-widest text-lg h-14 bg-stone-800 hover:bg-stone-700 text-white border-2 border-stone-700"
             >
               Novo Contrato
             </Button>
@@ -434,4 +456,4 @@ export default function GameScreen({ gameState, onStateChange }: GameScreenProps
       )}
     </div>
   );
-};
+}
