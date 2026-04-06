@@ -56,6 +56,7 @@ export class GameEngine {
   private selectedTowerId: string | null = null;
   private assets = new AssetManager();
   private assetsLoaded = false;
+  private isStopped = false;
 
   constructor(canvas: HTMLCanvasElement, onStateChange: (state: GameState) => void) {
     this.canvas = canvas;
@@ -86,6 +87,7 @@ export class GameEngine {
   }
 
   public start(onProgress?: (loaded: number, total: number) => void) {
+    console.log('Engine start called');
     this.state.status = 'playing';
     this.state.obolos = 200;
     this.state.lives = 20;
@@ -101,6 +103,7 @@ export class GameEngine {
     this.onStateChange({ ...this.state });
     
     if (!this.assetsLoaded) {
+      console.log('Loading assets...');
       this.assets.load({
         'tower_caronte': 'https://i.imgur.com/EqAP9zX.png',
         'tower_medusa': 'https://i.imgur.com/HvWCKBR.png',
@@ -113,18 +116,23 @@ export class GameEngine {
       }, (loaded, total) => {
         if (onProgress) onProgress(loaded, total);
       }, () => {
+        console.log('Assets loaded. isStopped:', this.isStopped);
+        if (this.isStopped) return;
         this.assetsLoaded = true;
         this.lastTime = performance.now();
-        this.loop(this.lastTime);
+        this.loop();
       });
     } else {
+      console.log('Assets already loaded. Starting loop.');
       if (onProgress) onProgress(1, 1);
       this.lastTime = performance.now();
-      this.loop(this.lastTime);
+      this.loop();
     }
   }
 
   public stop() {
+    console.log('Engine stop called');
+    this.isStopped = true;
     if (this.animationFrameId !== null) {
       cancelAnimationFrame(this.animationFrameId);
       this.animationFrameId = null;
@@ -132,10 +140,11 @@ export class GameEngine {
   }
 
   public resumeLoop() {
+    if (this.isStopped) return;
     if (this.animationFrameId === null && (this.state.status === 'playing' || this.state.status === 'paused') && this.assetsLoaded) {
       this.lastTime = performance.now();
       this.draw(); // Force a draw immediately
-      this.loop(this.lastTime);
+      this.loop();
     }
   }
 
@@ -183,10 +192,14 @@ export class GameEngine {
   }
 
   public buildTower(type: TowerType, gridX: number, gridY: number) {
+    console.log('buildTower called', type, gridX, gridY);
     const stats = TOWER_STATS[type];
     const cost = stats.cost[0];
     
-    if (this.state.obolos < cost) return false;
+    if (this.state.obolos < cost) {
+      console.log('Not enough obolos');
+      return false;
+    }
     
     // Check if cell is occupied by path or another tower
     const px = gridX * CELL_SIZE + CELL_SIZE / 2;
@@ -212,7 +225,10 @@ export class GameEngine {
       }
     }
     
-    if (onPath) return false;
+    if (onPath) {
+      console.log('Cannot build on path');
+      return false;
+    }
     
     // Check if cell is occupied by scenery
     const onScenery = SCENERY.some(item => {
@@ -224,13 +240,19 @@ export class GameEngine {
       }
       return item.x === gridX && item.y === gridY;
     });
-    if (onScenery) return false;
+    if (onScenery) {
+      console.log('Cannot build on scenery');
+      return false;
+    }
     
     const occupied = this.state.towers.some(t => 
       Math.abs(t.x - px) < CELL_SIZE / 2 && Math.abs(t.y - py) < CELL_SIZE / 2
     );
     
-    if (occupied) return false;
+    if (occupied) {
+      console.log('Cell is occupied by another tower');
+      return false;
+    }
     
     this.state.obolos -= cost;
     this.state.towers.push({
@@ -246,6 +268,7 @@ export class GameEngine {
       targetId: null,
     });
     
+    console.log('Tower built successfully. Total towers:', this.state.towers.length);
     this.onStateChange({ ...this.state });
     return true;
   }
@@ -274,8 +297,16 @@ export class GameEngine {
     this.onStateChange({ ...this.state });
   }
 
-  private loop = (time: number) => {
-    if (this.state.status !== 'playing' && this.state.status !== 'paused') return;
+  private loop = () => {
+    const time = performance.now();
+    if (this.isStopped) {
+      console.log('Loop stopped because isStopped is true');
+      return;
+    }
+    if (this.state.status !== 'playing' && this.state.status !== 'paused') {
+      console.log('Loop stopped because status is', this.state.status);
+      return;
+    }
     
     this.animationFrameId = requestAnimationFrame(this.loop);
     
