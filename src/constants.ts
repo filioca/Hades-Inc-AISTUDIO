@@ -113,17 +113,6 @@ export const ZEUS_QUOTES = [
 ];
 
 export const CORPORATE_MESSAGES = [
-  { sender: "Hera (Compliance)", text: "Recebi sua solicitação de upgrade. Precisarei de um Formulário de Justificativa de Investimento Infernal." },
-  { sender: "Hera (Compliance)", text: "Isso não está previsto no Manual Operacional do Submundo, edição revisada de 847 a.C. Vou abrir um ticket." },
-  { sender: "Proteu (Comercial)", text: "Hades é um executor brilhante. Executor é quem faz. Eu sou quem direciona. São funções complementares." },
-  { sender: "Proteu (Comercial)", text: "Zeus, sua visão para este projeto foi o que tornou tudo possível. Eu apenas coordenei." },
-  { sender: "Apolo (Marketing)", text: "Não é uma falha de contenção. É uma jornada de autodescoberta interrompida prematuramente. Vou preparar um press release." },
-  { sender: "Afrodite (RH)", text: "Esse conflito entre Zeus e Hades não é novo. Eu estava lá. Não vou comentar. Mas estava lá." },
-  { sender: "Hermes (Logística)", text: "Já passei o recado de Zeus para Hades, e de Hades para Zeus. Nenhum vai responder. Já documentei tudo." },
-  { sender: "Poseidon (Infraestrutura)", text: "A torre foi entregue dentro do espírito do contrato. A letra é uma interpretação. Toda letra é." },
-  { sender: "Poseidon (Infraestrutura)", text: "Eu sou uma ilha cercada por idiotas." },
-  { sender: "Poseidon (Infraestrutura)", text: "O subempreiteiro era o mais competitivo disponível. Competitivo em preço. Os outros aspectos são subjetivos." }
-  
   // HERA (Compliance e Burocracia)
   { sender: "Hera (Compliance)", text: "Recebi sua solicitação de upgrade. Precisarei de um Formulário de Justificativa de Investimento Infernal." },
   { sender: "Hera (Compliance)", text: "Isso não está previsto no Manual Operacional do Submundo, edição revisada de 847 a.C. Vou abrir um ticket." },
@@ -167,7 +156,7 @@ export const CORPORATE_MESSAGES = [
   // ZEUS (Chairman e FPR)
   { sender: "Zeus (CEO)", text: "O sucesso da contenção de ontem é prova da nossa excelente estratégia de delegação de riscos." },
   { sender: "Zeus (CEO)", text: "Cortamos os fundos do Submundo para incentivar a inovação disruptiva. De nada, Hades." },
-  { sender: "Zeus (CEO)", text: "A burocracia é o que nos separa dos titãs. Bem, isso e os raios." },
+  { sender: "Zeus (CEO)", text: "FPR não é egoísmo. É estratégia. Rico sabe usar recurso. Pobre gasta. São fatos." },
   
   // HADES (O gerente exausto)
   { sender: "Hades (Operações)", text: "Para constar em ata: eu avisei que a Torre de Sísifo precisava de manutenção há três séculos." },
